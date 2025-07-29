@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "483894496186",
+    "project_id": "inventario-tiendas-e7ff8",
+    "storage_bucket": "inventario-tiendas-e7ff8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:483894496186:android:ac15680926680b0ad6eb83",
+        "android_client_info": {
+          "package_name": "com.example.inventariotiendas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKHM_J1AwIkt6dJSQUynbbXjgitUmxQqY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
