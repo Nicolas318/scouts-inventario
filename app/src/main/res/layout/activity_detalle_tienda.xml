@@ -40,15 +40,18 @@
         </RelativeLayout>
 
         <!-- Tipo de tienda -->
-        <com.google.android.material.textfield.TextInputLayout
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tipo de tienda"
+            android:textStyle="bold"
+            android:layout_marginTop="12dp" />
+
+        <Spinner
+            android:id="@+id/spnTipoTienda"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Tipo de tienda">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/edtTipo"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-        </com.google.android.material.textfield.TextInputLayout>
+            android:layout_marginTop="8dp" />
 
         <!-- Nombre de tienda -->
         <com.google.android.material.textfield.TextInputLayout
@@ -107,26 +110,30 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Marcar al menos una reparación:" />
+                android:text="Selecciona reparaciones necesarias:"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp"/>
 
             <CheckBox
                 android:id="@+id/chkTienda"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Tienda" />
+
             <CheckBox
                 android:id="@+id/chkChupetes"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Chupetes" />
+
             <CheckBox
                 android:id="@+id/chkVientos"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Vientos" />
-
         </LinearLayout>
 
+        <!-- Imagen con anotaciones -->
         <FrameLayout
             android:id="@+id/flImageAnnotator"
             android:layout_width="match_parent"
@@ -134,7 +141,6 @@
             android:layout_marginTop="16dp"
             android:visibility="gone">
 
-            <!-- Imagen base predefinida -->
             <ImageView
                 android:id="@+id/ivBaseImage"
                 android:layout_width="match_parent"
@@ -142,13 +148,11 @@
                 android:scaleType="fitCenter"
                 android:src="@drawable/tienda_base" />
 
-            <!-- Vista para dibujar marcas -->
             <com.example.inventariotiendas.ui.AnnotationView
                 android:id="@+id/annotationView"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <!-- Botón deshacer -->
             <ImageButton
                 android:id="@+id/btnUndoMark"
                 android:layout_width="36dp"
@@ -158,7 +162,6 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Deshacer marca"
                 android:src="@drawable/ic_undo_24" />
-
         </FrameLayout>
 
         <!-- Selector de fecha -->
@@ -184,7 +187,7 @@
             android:text="Guardar"
             android:layout_marginTop="24dp" />
 
-        <!-- ProgressBar de carga -->
+        <!-- ProgressBar -->
         <ProgressBar
             android:id="@+id/progressBar"
             style="?android:attr/progressBarStyle"
@@ -193,6 +196,5 @@
             android:visibility="gone"
             android:layout_gravity="center"
             android:layout_marginTop="16dp" />
-
     </LinearLayout>
 </ScrollView>

@@ -13,7 +13,7 @@ data class Tienda(
     var num_gomas: Int = 0,
     var estado: String = "",
     var fecha_revision: Timestamp = Timestamp.now(),
-    // Lista de reparaciones aplicables (Tienda, Chupetes, Vientos)
     var reparaciones: List<String>? = null,
-    var marks: List<Map<String, Double>>? = null
+    var marks: List<Map<String, Any>>? = null,   // <-- Cambiado a Any
+    var grupo: String = ""  // ← NUEVO CAMPO
 )

@@ -7,21 +7,38 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 
-// Un simple View que guarda puntos donde el usuario toca
+// Un View que permite dibujar marcas de distintos tipos con colores
 class AnnotationView @JvmOverloads constructor(
     ctx: Context, attrs: AttributeSet? = null
 ) : View(ctx, attrs) {
 
-    private val marks = mutableListOf<Pair<Float,Float>>()
-    private val paint = Paint().apply {
-        color = 0xFFFF0000.toInt()   // rojo por defecto
-        strokeWidth = 5f
-        style = Paint.Style.STROKE
-    }
+    // Cada marca guarda x, y y tipo ("Tienda", "Chupete", "Viento")
+    private val marks = mutableListOf<Triple<Float, Float, String>>()
+    private val paints = mapOf(
+        "Tienda" to Paint().apply {
+            color = 0xFF00FF00.toInt() // verde
+            strokeWidth = 5f
+            style = Paint.Style.STROKE
+        },
+        "Chupete" to Paint().apply {
+            color = 0xFF0000FF.toInt() // azul
+            strokeWidth = 5f
+            style = Paint.Style.STROKE
+        },
+        "Viento" to Paint().apply {
+            color = 0xFFFF0000.toInt() // rojo
+            strokeWidth = 5f
+            style = Paint.Style.STROKE
+        }
+    )
+
+    // Tipo seleccionado actualmente; la Activity cambia este valor según checkbox
+    var currentType: String = "Tienda"
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_DOWN) {
-            marks.add(event.x to event.y)
+            // Añade la marca usando el tipo actual
+            marks.add(Triple(event.x, event.y, currentType))
             invalidate()
             return true
         }
@@ -30,8 +47,8 @@ class AnnotationView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        marks.forEach { (x,y) ->
-            // dibuja una X
+        marks.forEach { (x, y, type) ->
+            val paint = paints[type] ?: paints["Tienda"]!!
             val size = 30f
             canvas.drawLine(x - size, y - size, x + size, y + size, paint)
             canvas.drawLine(x - size, y + size, x + size, y - size, paint)
@@ -43,7 +60,6 @@ class AnnotationView @JvmOverloads constructor(
         invalidate()
     }
 
-    /** Elimina la última marca y repinta */
     fun undoLastMark() {
         if (marks.isNotEmpty()) {
             marks.removeAt(marks.lastIndex)
@@ -51,15 +67,24 @@ class AnnotationView @JvmOverloads constructor(
         }
     }
 
-    /** Devuelve todas las marcas como pares (x/width, y/height) */
-    fun getMarksRelative(): List<Pair<Float, Float>> =
-        marks.map { (x, y) -> x / width to y / height }
+    /** Devuelve todas las marcas como List<Map<String, Any>> para Firestore */
+    fun getMarksRelative(): List<Map<String, Any>> =
+        marks.map { (x, y, type) ->
+            mapOf(
+                "x" to (x / width).toDouble(),
+                "y" to (y / height).toDouble(),
+                "tipo" to type
+            )
+        }
 
-    /** Carga marcas relativas [0..1] escalándolas a píxeles */
-    fun setMarksRelative(rel: List<Pair<Float, Float>>) {
+    /** Carga marcas desde List<Map<String, Any>> de Firestore */
+    fun setMarksRelative(rel: List<Map<String, Any>>) {
         marks.clear()
-        rel.forEach { (xr, yr) ->
-            marks.add(xr * width to yr * height)
+        rel.forEach { m ->
+            val x = (m["x"] as? Double)?.toFloat() ?: return@forEach
+            val y = (m["y"] as? Double)?.toFloat() ?: return@forEach
+            val type = m["tipo"] as? String ?: "Tienda"
+            marks.add(Triple(x * width, y * height, type))
         }
         invalidate()
     }

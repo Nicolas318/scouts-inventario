@@ -14,6 +14,45 @@
         android:iconifiedByDefault="false"
         android:queryHint="Buscar tienda..." />
 
+    <!-- Filtros de estado -->
+    <LinearLayout
+        android:id="@+id/llFiltros"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:weightSum="3">
+
+        <Button
+            android:id="@+id/btnNueva"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Nueva"
+            android:backgroundTint="@color/teal_200"
+            android:textColor="@android:color/white"/>
+
+        <Button
+            android:id="@+id/btnUsada"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Usada"
+            android:backgroundTint="@color/teal_700"
+            android:textColor="@android:color/white"/>
+
+        <Button
+            android:id="@+id/btnReparar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Reparar"
+            android:backgroundTint="@color/teal_900"
+            android:textColor="@android:color/white"/>
+    </LinearLayout>
+
     <!-- RecyclerView para la lista de tiendas -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvTiendas"

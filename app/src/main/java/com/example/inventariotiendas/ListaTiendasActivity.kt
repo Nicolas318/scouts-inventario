@@ -2,10 +2,13 @@ package com.example.inventariotiendas
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.inventariotiendas.databinding.ActivityListaTiendasBinding
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import java.util.Locale
@@ -18,12 +21,16 @@ class ListaTiendasActivity : AppCompatActivity() {
     private val listaFiltrada = mutableListOf<Tienda>()
     private lateinit var adapter: TiendaAdapter
 
+    private var filtroEstadoActivo: String? = null  // “nueva”, “usada”, “reparar” o null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityListaTiendasBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Configura RecyclerView con listaFiltrada
+        val currentUser = FirebaseAuth.getInstance().currentUser
+
+        // RecyclerView
         adapter = TiendaAdapter(listaFiltrada) { tienda ->
             val intent = Intent(this, DetalleTiendaActivity::class.java)
             intent.putExtra("ID", tienda.id)
@@ -32,7 +39,7 @@ class ListaTiendasActivity : AppCompatActivity() {
         binding.rvTiendas.layoutManager = LinearLayoutManager(this)
         binding.rvTiendas.adapter = adapter
 
-        // Configura SearchView para filtrar por nombre, tipo o estado
+        // SearchView
         binding.svSearch.setIconifiedByDefault(false)
         binding.svSearch.queryHint = "Buscar tiendas..."
         binding.svSearch.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
@@ -43,50 +50,87 @@ class ListaTiendasActivity : AppCompatActivity() {
             }
         })
 
-        // FAB para crear nueva tienda
+        // Botones de filtro
+        binding.btnNueva.setOnClickListener { aplicarFiltroEstado("nueva", binding.btnNueva) }
+        binding.btnUsada.setOnClickListener { aplicarFiltroEstado("usada", binding.btnUsada) }
+        binding.btnReparar.setOnClickListener { aplicarFiltroEstado("reparar", binding.btnReparar) }
+
+        // FAB
         binding.fabAdd.setOnClickListener {
             startActivity(Intent(this, DetalleTiendaActivity::class.java))
         }
 
-        // Escucha Firestore en tiempo real
-        db.collection("tiendas")
-            .orderBy("nombre_tienda", Query.Direction.ASCENDING)
-            .addSnapshotListener { snap, error ->
-                if (error != null) return@addSnapshotListener
-                listaOriginal.clear()
-                snap?.documents?.forEach { doc ->
-                    val t = doc.toObject(Tienda::class.java)!!
-                    t.id = doc.id
-                    listaOriginal.add(t)
+        // Firestore listener filtrando por grupo del usuario
+        currentUser?.getIdToken(true)?.addOnSuccessListener { result ->
+            val group = result.claims["group"] as? String ?: ""
+
+            db.collection("tiendas")
+                .whereEqualTo("grupo", group)
+                .orderBy("nombre_tienda", Query.Direction.ASCENDING)
+                .addSnapshotListener { snap, error ->
+                    if (error != null) return@addSnapshotListener
+                    listaOriginal.clear()
+                    snap?.documents?.forEach { doc ->
+                        val t = doc.toObject(Tienda::class.java)!!
+                        t.id = doc.id
+                        listaOriginal.add(t)
+                    }
+                    filterList(binding.svSearch.query.toString())
                 }
-                // Filtra tras actualizar la lista original
-                filterList(binding.svSearch.query.toString())
-            }
+        }
     }
 
-    /**
-     * Filtra listaOriginal según tokens de búsqueda y actualiza listaFiltrada
-     */
+    private fun aplicarFiltroEstado(estado: String, boton: Button) {
+        // Si se pulsa el mismo botón dos veces, se quita el filtro
+        filtroEstadoActivo = if (filtroEstadoActivo == estado) null else estado
+        actualizarColoresFiltro()
+        filterList(binding.svSearch.query.toString())
+    }
+
+    private fun actualizarColoresFiltro() {
+        val colorActivo = ContextCompat.getColor(this, R.color.teal_900)
+        val colorInactivo = ContextCompat.getColor(this, R.color.teal_200)
+
+        val botones = listOf(binding.btnNueva, binding.btnUsada, binding.btnReparar)
+
+        for (boton in botones) {
+            val estadoBoton = when (boton.id) {
+                binding.btnNueva.id -> "nueva"
+                binding.btnUsada.id -> "usada"
+                binding.btnReparar.id -> "reparar"
+                else -> null
+            }
+            boton.backgroundTintList = ContextCompat.getColorStateList(
+                this,
+                if (estadoBoton == filtroEstadoActivo) R.color.teal_900 else R.color.teal_200
+            )
+        }
+    }
+
     private fun filterList(query: String?) {
         val tokens = query
             ?.lowercase(Locale.getDefault())
             ?.split("\\s+".toRegex())
             ?.filter { it.isNotEmpty() }
             ?: emptyList()
+
         listaFiltrada.clear()
-        if (tokens.isEmpty()) {
-            listaFiltrada.addAll(listaOriginal)
-        } else {
-            listaFiltrada.addAll(
-                listaOriginal.filter { tienda ->
-                    tokens.all { token ->
-                        tienda.nombre_tienda.lowercase(Locale.getDefault()).contains(token) ||
-                                tienda.tipo_tienda.lowercase(Locale.getDefault()).contains(token) ||
-                                tienda.estado.lowercase(Locale.getDefault()).contains(token)
-                    }
+
+        val tiendasFiltradas = listaOriginal.filter { tienda ->
+            val coincideTexto = if (tokens.isEmpty()) true else {
+                tokens.all { token ->
+                    tienda.nombre_tienda.lowercase(Locale.getDefault()).contains(token) ||
+                            tienda.tipo_tienda.lowercase(Locale.getDefault()).contains(token) ||
+                            tienda.estado.lowercase(Locale.getDefault()).contains(token)
                 }
-            )
+            }
+            val coincideEstado = filtroEstadoActivo?.let {
+                tienda.estado.equals(it, ignoreCase = true)
+            } ?: true
+            coincideTexto && coincideEstado
         }
+
+        listaFiltrada.addAll(tiendasFiltradas)
         adapter.notifyDataSetChanged()
     }
 }

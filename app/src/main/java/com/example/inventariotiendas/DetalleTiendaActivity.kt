@@ -10,8 +10,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.example.inventariotiendas.databinding.ActivityDetalleTiendaBinding
-import com.example.inventariotiendas.ui.AnnotationView
 import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import java.text.SimpleDateFormat
@@ -44,7 +44,15 @@ class DetalleTiendaActivity : AppCompatActivity() {
         // Oculta anotaciones al inicio
         binding.flImageAnnotator.visibility = View.GONE
 
-        // Spinner de estados
+        // --- Spinner de tipo de tienda ---
+        val tiposTienda = listOf("Canadiense", "Iglú")
+        val spnTipo: Spinner = binding.spnTipoTienda
+        spnTipo.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, tiposTienda
+        )
+        spnTipo.setSelection(0)
+
+        // --- Spinner de estados ---
         val estados = listOf("Nueva", "Usada", "Reparar")
         val spinner: Spinner = binding.spnEstado
         spinner.adapter = ArrayAdapter(
@@ -68,7 +76,7 @@ class DetalleTiendaActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
 
-        // Leer ID para editar
+        // --- Leer ID para editar ---
         tiendaId = intent.getStringExtra("ID")
         if (tiendaId != null) {
             binding.progressBar.visibility = View.VISIBLE
@@ -92,23 +100,36 @@ class DetalleTiendaActivity : AppCompatActivity() {
             db.collection("tiendas").document(tiendaId!!)
                 .get()
                 .addOnSuccessListener { doc ->
-                    // Obtén el objeto Tienda
                     val tienda = doc.toObject(Tienda::class.java)
                     if (tienda != null) {
-                        // Resto de tu restauración (campos, reparaciones, fecha, visibilidad…)
-                        binding.edtTipo.setText(tienda.tipo_tienda)
+                        // --- Restaurar datos ---
+                        val posTipo = tiposTienda.indexOf(tienda.tipo_tienda)
+                        spnTipo.setSelection(if (posTipo >= 0) posTipo else 0)
                         binding.edtNombre.setText(tienda.nombre_tienda)
                         binding.edtPiquetas.setText(tienda.num_piquetas.toString())
                         binding.edtGomas.setText(tienda.num_gomas.toString())
-                        val pos = estados.indexOf(tienda.estado)
-                        spinner.setSelection(if (pos >= 0) pos else 0)
 
-                        // Reparaciones…
+                        val posEstado = estados.indexOf(tienda.estado)
+                        spinner.setSelection(if (posEstado >= 0) posEstado else 0)
+
+                        // Reparaciones
                         binding.chkTienda.isChecked   = tienda.reparaciones?.contains("Tienda")  == true
                         binding.chkChupetes.isChecked = tienda.reparaciones?.contains("Chupetes")== true
                         binding.chkVientos.isChecked  = tienda.reparaciones?.contains("Vientos") == true
 
-                        // Fecha…
+                        // Configurar currentType según checkbox seleccionado
+                        binding.chkTienda.setOnCheckedChangeListener { _, isChecked ->
+                            if (isChecked) binding.annotationView.currentType = "Tienda"
+                        }
+                        binding.chkChupetes.setOnCheckedChangeListener { _, isChecked ->
+                            if (isChecked) binding.annotationView.currentType = "Chupete"
+                        }
+                        binding.chkVientos.setOnCheckedChangeListener { _, isChecked ->
+                            if (isChecked) binding.annotationView.currentType = "Viento"
+                        }
+
+
+                        // Fecha
                         fecha = tienda.fecha_revision.toDate()
                         binding.tvDate.text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
                             .format(fecha)
@@ -118,20 +139,13 @@ class DetalleTiendaActivity : AppCompatActivity() {
                         binding.repairOptions.visibility    = if (isRepair) View.VISIBLE else View.GONE
                         binding.flImageAnnotator.visibility = if (isRepair) View.VISIBLE else View.GONE
 
-                        // ————— Aquí restauramos las marcas —————
+                        // --- Restaurar marcas con tipo y color ---
                         tienda.marks?.let { rawMarks ->
                             @Suppress("UNCHECKED_CAST")
-                            val list = rawMarks as? List<Map<String, Double>>
+                            val list = rawMarks as? List<Map<String, Any>>
                             list?.let { maps ->
-                                // Convierte cada map a Pair<Float,Float>
-                                val relMarks = maps.mapNotNull { m ->
-                                    val x = m["x"]?.toFloat()
-                                    val y = m["y"]?.toFloat()
-                                    if (x != null && y != null) x to y else null
-                                }
-                                // Espera a que View tenga tamaño
                                 binding.annotationView.post {
-                                    binding.annotationView.setMarksRelative(relMarks)
+                                    binding.annotationView.setMarksRelative(maps)
                                 }
                             }
                         }
@@ -140,7 +154,7 @@ class DetalleTiendaActivity : AppCompatActivity() {
                 .addOnCompleteListener { binding.progressBar.visibility = View.GONE }
         }
 
-        // DatePicker
+        // --- DatePicker ---
         binding.btnDate.setOnClickListener {
             val cal = Calendar.getInstance()
             DatePickerDialog(
@@ -153,9 +167,12 @@ class DetalleTiendaActivity : AppCompatActivity() {
             ).show()
         }
 
-        // Guardar
+        // --- Guardar ---
         binding.btnGuardar.setOnClickListener {
             val estadoSel = spinner.selectedItem.toString()
+            val tipoSel = spnTipo.selectedItem.toString()
+            val currentUser = FirebaseAuth.getInstance().currentUser
+
             if (estadoSel == "Reparar" &&
                 !binding.chkTienda.isChecked &&
                 !binding.chkChupetes.isChecked &&
@@ -164,33 +181,51 @@ class DetalleTiendaActivity : AppCompatActivity() {
                 Toast.makeText(this, "Marca al menos una reparación", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+
+            // Lista de reparaciones
             val reparaciones = mutableListOf<String>()
             if (binding.chkTienda.isChecked) reparaciones.add("Tienda")
             if (binding.chkChupetes.isChecked) reparaciones.add("Chupetes")
             if (binding.chkVientos.isChecked) reparaciones.add("Vientos")
 
-            // Guarda marcas relativas en un List<Map<String,Double>>
-            val marksRel = binding.annotationView.getMarksRelative()
-            val marksMap = marksRel.map { (xr, yr) ->
-                mapOf("x" to xr.toDouble(), "y" to yr.toDouble())
+            // Guardar marcas
+            val marksMap = binding.annotationView.getMarksRelative()
+
+            // --- Obtener el grupo del usuario correctamente ---
+            currentUser?.getIdToken(false)?.addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val claims = task.result?.claims
+                    val grupo = claims?.get("group") as? String
+
+                    if (grupo == null) {
+                        Toast.makeText(this, "No se pudo obtener el grupo del usuario", Toast.LENGTH_SHORT).show()
+                        return@addOnCompleteListener
+                    }
+
+                    val data = mapOf(
+                        "tipo_tienda" to tipoSel,
+                        "nombre_tienda" to binding.edtNombre.text.toString(),
+                        "num_piquetas" to binding.edtPiquetas.text.toString().toIntOrNull().orZero(),
+                        "num_gomas" to binding.edtGomas.text.toString().toIntOrNull().orZero(),
+                        "estado" to estadoSel,
+                        "reparaciones" to reparaciones,
+                        "fecha_revision" to Timestamp(fecha),
+                        "marks" to marksMap,
+                        "grupo" to grupo
+                    )
+
+                    if (tiendaId != null)
+                        db.collection("tiendas").document(tiendaId!!).set(data, SetOptions.merge())
+                    else
+                        db.collection("tiendas").add(data)
+
+                    finish()
+                } else {
+                    Toast.makeText(this, "Error al obtener el token del usuario", Toast.LENGTH_SHORT).show()
+                }
             }
-
-            val data = mapOf(
-                "tipo_tienda" to binding.edtTipo.text.toString(),
-                "nombre_tienda" to binding.edtNombre.text.toString(),
-                "num_piquetas" to binding.edtPiquetas.text.toString().toIntOrNull().orZero(),
-                "num_gomas" to binding.edtGomas.text.toString().toIntOrNull().orZero(),
-                "estado" to estadoSel,
-                "reparaciones" to reparaciones,
-                "fecha_revision" to Timestamp(fecha),
-                "marks" to marksMap
-            )
-            if (tiendaId != null) db.collection("tiendas")
-                .document(tiendaId!!).set(data, SetOptions.merge())
-            else db.collection("tiendas").add(data)
-
-            finish()
         }
+
     }
 
     private fun Int?.orZero() = this ?: 0
