@@ -78,6 +78,24 @@ class ListaTiendasActivity : AppCompatActivity() {
                     filterList(binding.svSearch.query.toString())
                 }
         }
+
+        binding.btnLogout.setOnClickListener {
+            // Opcional: mostrar un diálogo de confirmación
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Cerrar sesión")
+                .setMessage("¿Seguro que quieres cerrar sesión?")
+                .setPositiveButton("Sí") { _, _ ->
+                    // Cerrar sesión en Firebase
+                    FirebaseAuth.getInstance().signOut()
+                    // Volver a la pantalla de login
+                    val intent = Intent(this, LoginActivity::class.java)
+                    // Evitar que el usuario pueda volver con el botón atrás
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    startActivity(intent)
+                }
+                .setNegativeButton("No", null)
+                .show()
+        }
     }
 
     private fun aplicarFiltroEstado(estado: String, boton: Button) {
