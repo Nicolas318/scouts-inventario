@@ -63,12 +63,12 @@
         android:clipToPadding="false" />
 
     <!-- LinearLayout para botones al final -->
-    <!-- LinearLayout para botones al final -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:layout_marginTop="8dp"
+        android:paddingBottom="30dp"
         android:gravity="center_vertical">
 
         <!-- Botón cerrar sesión a la izquierda -->
